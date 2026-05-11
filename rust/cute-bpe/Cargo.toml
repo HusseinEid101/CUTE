@@ -1,0 +1,35 @@
+[package]
+name = "cute-bpe"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+description = "Purpose-built Rust BPE encoder/decoder for the CUTE tokenizer — tiktoken-style algorithm with PUA + compound AddedToken support, loading from a HuggingFace tokenizer.json."
+
+[lib]
+name = "cute_bpe"
+path = "src/lib.rs"
+
+[dependencies]
+cute-core = { path = "../cute-core" }
+rustc-hash.workspace = true
+fancy-regex.workspace = true
+aho-corasick.workspace = true
+once_cell.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+rayon.workspace = true
+ahash.workspace = true
+
+[dev-dependencies]
+criterion.workspace = true
+
+[[bench]]
+name = "encode"
+harness = false
+
+[[bench]]
+name = "decode"
+harness = false

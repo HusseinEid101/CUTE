@@ -1,0 +1,45 @@
+# Default CUTE build config.
+# Pass via: cute build --corpus ./corpus --output ./output --config configs/default.toml
+
+# Vocab budgets:
+#   vocab_size = bytes (256) + special_tokens + pua_budget + bpe_merges
+# The trainer floor-validates vocab_size against pua_budget + min_bpe_budget.
+vocab_size = 120000
+pua_budget = 50000
+min_bpe_budget = 50000
+
+# coverage_target is only used by the deprecated select_by_coverage path
+# (use_savings_selection = false). Kept for backward compatibility.
+coverage_target = 0.90
+
+max_token_len = 50
+boost_weight = 0.3
+min_frequency = 2
+seed = 42
+workers = 0  # 0 = os.cpu_count()
+shard_size_bytes = 67108864  # 64 MiB
+
+# Selection + atomicity policy.
+use_savings_selection = true
+strict_pua_atomicity = true
+allow_supplementary_pua = false  # cap PUA budget at BMP (6,400) by default
+
+# Corpus filters.
+enable_secret_scrub = true
+enable_license_filter = false
+
+extensions = [
+    ".py", ".js", ".ts", ".tsx", ".jsx",
+    ".java", ".c", ".cpp", ".h", ".hpp",
+    ".cs", ".rs", ".go", ".rb", ".php",
+    ".swift", ".kt", ".scala", ".sh",
+    ".sql", ".html", ".css", ".scss",
+    ".json", ".yaml", ".yml", ".toml", ".md",
+]
+
+# Pipe-style markers only. <s>, </s>, <unk>, <pad> would collide with
+# natural code text and cause silent roundtrip loss.
+special_tokens = [
+    "<|endoftext|>", "<|fim_prefix|>", "<|fim_middle|>", "<|fim_suffix|>",
+    "<|file_sep|>", "<|repo_name|>", "<|im_start|>", "<|im_end|>", "<|im_sep|>",
+]

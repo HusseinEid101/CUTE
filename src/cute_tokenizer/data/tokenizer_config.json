@@ -1,0 +1,13 @@
+{
+  "tokenizer_class": "CUTETokenizerFast",
+  "auto_map": {
+    "AutoTokenizer": [
+      null,
+      "cute_tokenizer.tokenizer.CUTETokenizerFast"
+    ]
+  },
+  "model_max_length": 1000000,
+  "padding_side": "right",
+  "truncation_side": "right",
+  "eos_token": "<|endoftext|>"
+}

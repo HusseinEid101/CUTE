@@ -1,0 +1,21 @@
+[package]
+name = "cute_tokenizer_accel"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+description = "PyO3 bindings exposing cute-core to Python as cute_tokenizer._accel."
+
+[lib]
+name = "_accel"
+crate-type = ["cdylib"]
+path = "src/lib.rs"
+
+[dependencies]
+cute-core = { path = "../cute-core" }
+cute-bpe = { path = "../cute-bpe" }
+pyo3 = { workspace = true }
+ahash.workspace = true
+rayon.workspace = true

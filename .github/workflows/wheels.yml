@@ -1,0 +1,140 @@
+name: Build wheels
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: "Publish to PyPI after building"
+        required: false
+        default: "false"
+        type: choice
+        options: ["true", "false"]
+
+jobs:
+  linux:
+    name: Linux wheels (${{ matrix.target }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [x86_64, aarch64]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Build wheels (manylinux)
+        uses: PyO3/maturin-action@v1
+        with:
+          target: ${{ matrix.target }}
+          manylinux: "2014"
+          args: --release --out dist
+          sccache: "true"
+
+      - name: Smoke-test (x86_64 only)
+        if: matrix.target == 'x86_64'
+        run: |
+          set -eux
+          pip install --upgrade pip
+          pip install dist/*.whl
+          python -c "from cute_tokenizer import load_default_tokenizer; t=load_default_tokenizer(); ids=t('def hello(): return 42', add_special_tokens=False).input_ids; assert len(ids) > 0 and t.decode(ids, skip_special_tokens=True) == 'def hello(): return 42'; print('linux smoke OK', len(ids), 'tokens')"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wheels-linux-${{ matrix.target }}
+          path: dist/*.whl
+
+  macos:
+    name: macOS wheels (${{ matrix.target }})
+    runs-on: macos-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [universal2-apple-darwin, x86_64-apple-darwin, aarch64-apple-darwin]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Build wheels (macOS)
+        uses: PyO3/maturin-action@v1
+        with:
+          target: ${{ matrix.target }}
+          args: --release --out dist
+          sccache: "true"
+
+      - name: Smoke-test (universal2 only)
+        if: matrix.target == 'universal2-apple-darwin'
+        run: |
+          set -eux
+          pip install --upgrade pip
+          pip install dist/*.whl
+          python -c "from cute_tokenizer import load_default_tokenizer; t=load_default_tokenizer(); ids=t('def hello(): return 42', add_special_tokens=False).input_ids; assert len(ids) > 0 and t.decode(ids, skip_special_tokens=True) == 'def hello(): return 42'; print('macos smoke OK', len(ids), 'tokens')"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wheels-macos-${{ matrix.target }}
+          path: dist/*.whl
+
+  windows:
+    name: Windows wheels (${{ matrix.target }})
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [x64]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Build wheels (Windows)
+        uses: PyO3/maturin-action@v1
+        with:
+          target: ${{ matrix.target }}
+          args: --release --out dist
+          sccache: "true"
+
+      - name: Smoke-test
+        run: |
+          pip install --upgrade pip
+          $w = Get-ChildItem dist\*.whl | Select-Object -First 1
+          pip install $w.FullName
+          python -c "from cute_tokenizer import load_default_tokenizer; t=load_default_tokenizer(); ids=t('def hello(): return 42', add_special_tokens=False).input_ids; assert len(ids) > 0 and t.decode(ids, skip_special_tokens=True) == 'def hello(): return 42'; print('windows smoke OK', len(ids), 'tokens')"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wheels-windows-${{ matrix.target }}
+          path: dist/*.whl
+
+  sdist:
+    name: Source distribution
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build sdist
+        uses: PyO3/maturin-action@v1
+        with:
+          command: sdist
+          args: --out dist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wheels-sdist
+          path: dist/*.tar.gz
+
+# PyPI publish runs locally via `twine upload dist-flat/*` against an
+# API token. Trusted Publishing is intentionally not configured here —
+# the prior environment-scoped publisher repeatedly mismatched and
+# blocked every release. Wheels and sdist are uploaded as workflow
+# artifacts (downloadable with `gh run download <run-id>`); the
+# release engineer then runs twine locally to push to PyPI.

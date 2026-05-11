@@ -1,0 +1,126 @@
+[build-system]
+requires = ["maturin>=1.7,<2.0"]
+build-backend = "maturin"
+
+[project]
+name = "cute-tokenizer"
+version = "1.0.1"
+description = "Compact Unicode Token Encoding via Semantic-Anchored Byte-level BPE — a code-aware tokenizer"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "Hussein Eid", email = "HusseinEid101@users.noreply.github.com" }]
+keywords = ["tokenizer", "nlp", "llm", "code", "bpe", "huggingface"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Rust",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Text Processing :: Linguistic",
+]
+dependencies = [
+    "tokenizers>=0.20,<0.22",
+    "transformers>=4.45",
+    "regex>=2024.7.24",
+    "pyahocorasick>=2.1",
+    "tqdm>=4.66",
+    "xxhash>=3.4",
+    "orjson>=3.10",
+]
+
+[project.optional-dependencies]
+baseline = [
+    "tiktoken>=0.7",
+]
+dev = [
+    "pytest>=8.0",
+    "pytest-cov>=5.0",
+    "hypothesis>=6.100",
+    "ruff>=0.6",
+    "mypy>=1.11",
+    "tiktoken>=0.7",
+]
+benchmarks = [
+    "tiktoken>=0.7",
+    "matplotlib>=3.8",
+    "tabulate>=0.9",
+]
+
+[project.scripts]
+cute = "cute_tokenizer.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/HusseinEid101/CUTE"
+Issues = "https://github.com/HusseinEid101/CUTE/issues"
+
+# ---------------------------------------------------------------------------
+# Maturin: mixed Python + Rust layout.
+# ---------------------------------------------------------------------------
+#
+# - Python source stays at `src/cute_tokenizer/` (no moves, no rewrites).
+# - The Rust extension is built from `rust/cute_tokenizer_accel/` and ships
+#   as `cute_tokenizer._accel` (cdylib renamed to `_accel`).
+# - For editable installs (`maturin develop`), bundled tokenizer JSONs are
+#   resolved from `./model/` via `_bundled_data_dir`. For real wheel builds,
+#   contributors should populate `src/cute_tokenizer/data/` with the model
+#   artifacts before building (see `scripts/_prebuild_copy_model.py`).
+# ---------------------------------------------------------------------------
+[tool.maturin]
+python-source = "src"
+manifest-path = "rust/cute_tokenizer_accel/Cargo.toml"
+module-name = "cute_tokenizer._accel"
+features = ["pyo3/extension-module"]
+strip = true
+# Files maturin doesn't auto-include in the sdist. PyPI's metadata
+# generator emits `License-File: LICENSE` from `[project] license`,
+# so LICENSE must travel with the sdist or PyPI rejects upload.
+include = ["LICENSE", "CHANGELOG.md"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "UP", "B", "C4", "SIM", "RUF"]
+ignore = ["E501"]  # line length handled by formatter
+
+[tool.ruff.format]
+quote-style = "double"
+
+[tool.mypy]
+python_version = "3.10"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+no_implicit_optional = true
+
+[[tool.mypy.overrides]]
+module = ["ahocorasick.*", "xxhash.*", "tiktoken.*", "cute_tokenizer._accel.*"]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra --strict-markers"
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests requiring file I/O or training",
+    "property: marks Hypothesis property tests",
+]
+
+[tool.coverage.run]
+source = ["src/cute_tokenizer"]
+branch = true
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+]

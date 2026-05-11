@@ -1,0 +1,46 @@
+{
+  "version": "1.0.0",
+  "release_name": "V2",
+  "tokenizer_class": "CUTETokenizerFast",
+  "training_pipeline": {
+    "stages": [
+      "PUA-substituted shard ingest (135,363 files, 1.0 GB)",
+      "Frequency counting + savings-based PUA selection (50,000 PUAs)",
+      "BPE training with PUA chars in initial_alphabet (PUA-byte merging)",
+      "Top-6,000 cross-boundary AddedTokens added post-training (savings-ranked)"
+    ],
+    "key_innovation_v2": "PUA chars placed in initial_alphabet, NOT registered as AddedTokens after training. This lets BPE learn whitespace+PUA, punct+PUA, PUA+PUA merges natively, which v1 architecturally couldn't capture."
+  },
+  "config": {
+    "vocab_size": 200000,
+    "pua_budget": 50000,
+    "min_bpe_budget": 130000,
+    "min_frequency": 2,
+    "boost_weight": 0.3,
+    "max_token_len": 50,
+    "compound_added_tokens": 6000,
+    "pua_skip_bmp": true,
+    "allow_supplementary_pua": true,
+    "use_savings_selection": true,
+    "baseline_for_selection": "cl100k_base",
+    "compound_selection": "savings_ranked_ascii_only"
+  },
+  "library_versions": {
+    "python": "3.13.1",
+    "tokenizers": "0.21.4",
+    "transformers": "4.55.4",
+    "regex": "2026.4.4"
+  },
+  "benchmarks_python_holdout_1500": {
+    "mean_tokens_per_file": 1768.0,
+    "bytes_per_token": 4.42,
+    "p50_tokens": 667,
+    "p95_tokens": 6502,
+    "p99_tokens": 20091,
+    "roundtrip": "1500/1500",
+    "encode_p50_us": 1496,
+    "decode_p50_us": 218,
+    "vs_cl100k_base": "+5.7% more compact",
+    "vs_o200k_base": "+6.3% more compact"
+  }
+}

@@ -1,0 +1,37 @@
+# V5 experiment: enlarge total vocab so BPE has room to learn rich subword patterns.
+#
+# Hypothesis: v4 (50k PUA + ~70k BPE merges) is starving BPE of budget.
+# cl100k has ~100k+ BPE merges and that's where its compaction edge comes from.
+# This run keeps the 50k PUA savings-anchored mappings AND gives BPE 130k merges.
+
+vocab_size = 200000
+pua_budget = 50000
+min_bpe_budget = 130000
+coverage_target = 0.90
+max_token_len = 50
+boost_weight = 0.3
+min_frequency = 2
+seed = 42
+workers = 0
+shard_size_bytes = 67108864
+
+use_savings_selection = true
+strict_pua_atomicity = true
+allow_supplementary_pua = true
+
+enable_secret_scrub = true
+enable_license_filter = false
+
+extensions = [
+    ".py", ".js", ".ts", ".tsx", ".jsx",
+    ".java", ".c", ".cpp", ".h", ".hpp",
+    ".cs", ".rs", ".go", ".rb", ".php",
+    ".swift", ".kt", ".scala", ".sh",
+    ".sql", ".html", ".css", ".scss",
+    ".json", ".yaml", ".yml", ".toml", ".md",
+]
+
+special_tokens = [
+    "<|endoftext|>", "<|fim_prefix|>", "<|fim_middle|>", "<|fim_suffix|>",
+    "<|file_sep|>", "<|repo_name|>", "<|im_start|>", "<|im_end|>", "<|im_sep|>",
+]

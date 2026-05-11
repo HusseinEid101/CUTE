@@ -1,0 +1,32 @@
+{
+  "include": ["src", "tests", "demo", "benchmarks", "scripts", "configs"],
+  "exclude": [
+    "**/__pycache__",
+    "**/.pytest_cache",
+    "**/.ruff_cache",
+    "**/.mypy_cache",
+    "**/.hypothesis",
+    "**/.venv",
+    "**/venv",
+    "**/env",
+    "**/training_corpus",
+    "**/corpus",
+    "**/holdout",
+    "**/corpus_stack_subset",
+    "**/output",
+    "**/output_release",
+    "**/home-assistant",
+    "**/black",
+    "**/flask",
+    "**/pandas",
+    "**/django",
+    "**/scikit-learn",
+    "**/dist",
+    "**/*.egg-info",
+    "**/build"
+  ],
+  "ignore": [],
+  "pythonVersion": "3.10",
+  "pythonPlatform": "Windows",
+  "typeCheckingMode": "basic"
+}

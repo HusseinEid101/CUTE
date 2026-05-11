@@ -1,0 +1,63 @@
+def calculate_total(items, tax_rate=0.1):
+    """Compute the total price including tax."""
+    if not items:
+        return 0.0
+    subtotal = sum(item.price * item.quantity for item in items)
+    tax = subtotal * tax_rate
+    return subtotal + tax
+
+
+class ShoppingCart:
+    def __init__(self, user_id: int):
+        self.user_id = user_id
+        self.items = []
+
+    def add_item(self, item):
+        self.items.append(item)
+        return self
+
+    def remove_item(self, item_id):
+        self.items = [i for i in self.items if i.id != item_id]
+        return self
+
+    def total(self):
+        return calculate_total(self.items)
+
+
+class HTTPRequestParser:
+    def __init__(self, raw_bytes: bytes):
+        self.raw = raw_bytes
+        self.headers = {}
+        self.body = b""
+
+    def parse_headers(self):
+        head, _, body = self.raw.partition(b"\r\n\r\n")
+        for line in head.split(b"\r\n"):
+            if b":" in line:
+                k, _, v = line.partition(b":")
+                self.headers[k.decode().strip()] = v.decode().strip()
+        self.body = body
+
+    def get_method(self):
+        first_line = self.raw.split(b"\r\n")[0]
+        return first_line.split(b" ")[0].decode()
+
+
+def MAX_BUFFER_SIZE_for(channel_type):
+    if channel_type == "fast":
+        return 65536
+    elif channel_type == "slow":
+        return 4096
+    else:
+        return 16384
+
+
+# Example usage
+cart = ShoppingCart(user_id=42)
+cart.add_item({"price": 10.0, "quantity": 2, "id": 1})
+cart.add_item({"price": 5.5, "quantity": 1, "id": 2})
+print(f"Cart total: ${cart.total():.2f}")
+
+parser = HTTPRequestParser(b"GET / HTTP/1.1\r\nHost: example.com\r\n\r\n")
+parser.parse_headers()
+print(f"Method: {parser.get_method()}, Host: {parser.headers.get('Host')}")
