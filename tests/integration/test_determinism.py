@@ -7,8 +7,9 @@ byte-identical tokenizer. Cross-platform byte-identity is **not** part
 of the contract — the underlying Rust BPE trainer's float comparisons
 and serialization order are not guaranteed stable across OSes.
 
-We skip these checks on Windows because the `tokenizers` Rust library
-exhibits intermittent non-determinism there under threading.
+We skip these checks on Windows and macOS because the `tokenizers`
+Rust library exhibits intermittent non-determinism on those platforms
+under threading / APFS filesystem ordering; the contract is Linux-only.
 """
 
 from __future__ import annotations
@@ -24,8 +25,11 @@ from cute_tokenizer.manifest import BuildManifest, determinism_diff
 pytestmark = [
     pytest.mark.integration,
     pytest.mark.skipif(
-        sys.platform == "win32",
-        reason="BPE training is not byte-deterministic on Windows; see determinism contract",
+        sys.platform in ("win32", "darwin"),
+        reason=(
+            "BPE training is not byte-deterministic on Windows/macOS; "
+            "determinism contract is Linux-only"
+        ),
     ),
 ]
 
