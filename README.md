@@ -17,7 +17,7 @@
     <img src="https://img.shields.io/badge/🤗-HuggingFace-ffd21e?style=flat-square" alt="HuggingFace"/>
   </a>
   <a href="https://pypi.org/project/cute-tokenizer/">
-    <img src="https://img.shields.io/pypi/v/cute-tokenizer?style=flat-square&color=white&cb=20260512" alt="PyPI version"/>
+    <img src="https://img.shields.io/pypi/v/cute-tokenizer?style=flat-square&color=white&cb=20260511" alt="PyPI version"/>
   </a>
   <a href="https://github.com/HusseinEid101/CUTE/actions">
     <img src="https://img.shields.io/github/actions/workflow/status/HusseinEid101/CUTE/ci.yml?branch=main&style=flat-square" alt="CI"/>
