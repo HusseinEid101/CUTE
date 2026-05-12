@@ -4,6 +4,7 @@
 //! plus `cute_mapping.json`, then call `encode` / `decode` per request.
 //! All hot work happens in Rust; the only Python time is the FFI hop.
 
+use std::cell::RefCell;
 use std::io;
 use std::path::Path;
 
@@ -16,28 +17,37 @@ use crate::regex as pretok_regex;
 use crate::special::SpecialMatcher;
 use crate::vocab::Vocab;
 
+thread_local! {
+    /// Reusable byte-level scratch buffer. Lives for the duration of the
+    /// thread; cleared (logically) at the start of each piece encode by
+    /// `encode_bytes_into`. Avoids the per-call `Vec::with_capacity` we
+    /// previously paid for every BPE piece.
+    static BL_BUF: RefCell<Vec<u8>> = const { RefCell::new(Vec::new()) };
+}
+
 /// Run GPT-2 ByteLevel pre-tokenization + BPE encode over a chunk that
 /// contains no special tokens. Splits via the cached GPT-2 regex; each
-/// match is byte-level-encoded then BPE-encoded independently. Uses a
-/// single reusable scratch buffer for the byte-level intermediate to
-/// avoid per-piece allocation in the hot loop.
+/// match is byte-level-encoded then BPE-encoded independently. Reuses
+/// the thread-local [`BL_BUF`] for the byte-level intermediate.
 fn encode_pretokenized_bpe(bytes: &[u8], vocab: &Vocab, out: &mut Vec<u32>) {
-    let mut bl_buf: Vec<u8> = Vec::with_capacity(64);
-    let Ok(text) = std::str::from_utf8(bytes) else {
-        encoder::encode_raw_bytes_with_buf(bytes, vocab, &mut bl_buf, out);
-        return;
-    };
-    let mut cursor: usize = 0;
-    for (start, end) in pretok_regex::split(text) {
-        if start > cursor {
-            encoder::encode_raw_bytes_with_buf(&bytes[cursor..start], vocab, &mut bl_buf, out);
+    BL_BUF.with(|cell| {
+        let mut bl_buf = cell.borrow_mut();
+        let Ok(text) = std::str::from_utf8(bytes) else {
+            encoder::encode_raw_bytes_with_buf(bytes, vocab, &mut bl_buf, out);
+            return;
+        };
+        let mut cursor: usize = 0;
+        for (start, end) in pretok_regex::split(text) {
+            if start > cursor {
+                encoder::encode_raw_bytes_with_buf(&bytes[cursor..start], vocab, &mut bl_buf, out);
+            }
+            encoder::encode_raw_bytes_with_buf(&bytes[start..end], vocab, &mut bl_buf, out);
+            cursor = end;
         }
-        encoder::encode_raw_bytes_with_buf(&bytes[start..end], vocab, &mut bl_buf, out);
-        cursor = end;
-    }
-    if cursor < bytes.len() {
-        encoder::encode_raw_bytes_with_buf(&bytes[cursor..], vocab, &mut bl_buf, out);
-    }
+        if cursor < bytes.len() {
+            encoder::encode_raw_bytes_with_buf(&bytes[cursor..], vocab, &mut bl_buf, out);
+        }
+    });
 }
 
 /// Loaded BPE engine. Build once, share across many encode/decode calls.

@@ -4,6 +4,96 @@ All notable changes to CUTE are documented in this file. This project
 follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.2] — 2026-05-12 — perf: 5–6× encode speedup
+
+Pure performance release. Same `tokenizer.json` artifact as 1.0.1,
+same token IDs (200 / 200 byte-identical against HuggingFace
+`fast_encode` on the Stack-Python holdout). Five compounding
+optimizations on the cute-bpe Rust hot path:
+
+1. **SmallVec for BPE parts** — stack-resident `parts` table for any
+   piece ≤ 79 bytes, zero heap allocation in the inner loop.
+2. **Heap-based BPE path for long pieces** — `BinaryHeap` +
+   doubly-linked-list takes over above 64 bytes, asymptotically
+   O(n log n) instead of O(n²). Tie-breaker is `Reverse(idx)` to
+   match tiktoken's leftmost-first merge order.
+3. **Thread-local byte-level scratch** — `bl_buf` is now a
+   `thread_local!` `RefCell<Vec<u8>>` reused across every encode call,
+   eliminating per-piece allocation.
+4. **Hand-rolled GPT-2 pre-tokenizer** — drops the `fancy-regex`
+   dependency. The NFA + backtracking lookahead (`\s+(?!\S)`) was
+   the single largest contributor to encode cost on short inputs;
+   the hand-rolled scanner is a direct state machine.
+5. **Precomputed byte-level UTF-8 table** — `BL_BYTES: [[u8; 3]; 256]`
+   gives each input byte its byte-level UTF-8 form as
+   `(byte0, byte1, length)`. `encode_bytes_into` is now a single
+   array lookup + 1–2 byte pushes per input byte.
+
+### Microbenchmarks (`cargo bench -p cute-bpe --bench encode`)
+
+| Bench | 1.0.1 | 1.0.2 | Speedup |
+|---|---:|---:|---:|
+| encode_short (1.1 KB) | 597 µs | **154 µs** | **3.9×** |
+| encode_long (~21 KB) | 10.97 ms | **1.87 ms** | **5.9×** |
+| encode_ascii_only | 290 µs | **55 µs** | **5.3×** |
+
+### End-to-end Python (1.7 KB sample)
+
+| Path | 1.0.1 | 1.0.2 | Speedup |
+|---|---:|---:|---:|
+| `fast_encode` | 1,526 µs | **254 µs** | **6.0×** |
+| `fast_decode` | 146 µs | **31 µs** | **4.7×** |
+
+### Global benchmark (1,500-file Python holdout, p50 across all files)
+
+| Tokenizer | mean tok | vs CUTE | encode p50 | decode p50 | roundtrip |
+|---|---:|---:|---:|---:|---:|
+| **CUTE** | **1,767** | — | **1,822 µs** | **263 µs** | **1500 / 1500** |
+| cl100k_base | 1,874 | +6.0% | 1,338 µs | 120 µs | 1500 / 1500 |
+| o200k_base | 1,886 | +6.7% | 1,760 µs | 126 µs | 1500 / 1500 |
+| LLaMA-3 SP-BPE | 1,872 | +5.9% | 3,753 µs | 792 µs | 686 / 1500 |
+| StarCoder2 | 2,210 | +25.1% | 4,316 µs | 775 µs | 685 / 1500 |
+| XLM-RoBERTa | 2,438 | +38.0% | 3,272 µs | 440 µs | 0 / 1500 |
+| CodeLlama | 2,573 | +45.6% | 3,162 µs | 1,885 µs | 1493 / 1500 |
+| T5 | 2,706 | +53.2% | 3,121 µs | 479 µs | 0 / 1500 |
+| GPT-2 | 3,581 | +102.7% | 4,467 µs | 911 µs | 1500 / 1500 |
+
+CUTE is **3rd-fastest encode**, **3rd-fastest decode**, **most
+compact**, and the **only tokenizer with byte-perfect roundtrip on
+all 1,500 files** in the comparison. Full report:
+[`reports/v102.md`](reports/v102.md).
+
+### Added
+
+- `rust/cute-bpe`: `byte_pair_encode_heap` (BinaryHeap + linked-list
+  long-piece path) and the `(Reverse<rank>, Reverse<idx>)` tie-break.
+- `rust/cute-bpe`: `BL_BYTES` precomputed byte-level UTF-8 table in
+  `bytelevel.rs`.
+- `rust/cute-bpe`: hand-rolled GPT-2 pre-tokenizer scanner in
+  `regex.rs` (replaces fancy-regex).
+- `rust/cute-bpe`: real production-model encode benchmarks in
+  `benches/encode.rs` (was a placeholder; now exercises short / long
+  / ASCII-heavy samples via Criterion).
+- `cute-bpe`: new tests `small_and_heap_paths_agree` and
+  `fast_table_matches_char_encode` covering the two new code paths.
+
+### Changed
+
+- `rust/cute-bpe/Cargo.toml`: drop `fancy-regex` (no longer used);
+  add `smallvec` workspace dep.
+- `rust/cute-bpe/src/pipeline.rs`: hoist per-piece byte-level scratch
+  to a thread-local `BL_BUF`.
+- Bumped to `1.0.2` in `pyproject.toml`, `Cargo.toml`,
+  `src/cute_tokenizer/_version.py`, and the HF model-card citation.
+
+### Verification
+
+- `cargo test -p cute-bpe --release`: 36 / 36 (incl. two new tests).
+- `cargo clippy --all -- -D warnings`: clean.
+- `pytest tests/{unit,property,integration/test_cute_bpe_parity.py}`:
+  290 / 290 (the load-bearing parity gate is 200 / 200 byte-identical
+  against HuggingFace `fast_encode`).
+
 ## [1.0.1] — 2026-05-11 — V1.0 release
 
 > The V1.0 release ships as PyPI `cute-tokenizer 1.0.1`. An earlier

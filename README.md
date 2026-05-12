@@ -17,7 +17,7 @@
     <img src="https://img.shields.io/badge/🤗-HuggingFace-ffd21e?style=flat-square" alt="HuggingFace"/>
   </a>
   <a href="https://pypi.org/project/cute-tokenizer/">
-    <img src="https://img.shields.io/pypi/v/cute-tokenizer?style=flat-square&color=white&cb=20260511" alt="PyPI version"/>
+    <img src="https://img.shields.io/pypi/v/cute-tokenizer?style=flat-square&color=white&cb=20260512" alt="PyPI version"/>
   </a>
   <a href="https://github.com/HusseinEid101/CUTE/actions">
     <img src="https://img.shields.io/github/actions/workflow/status/HusseinEid101/CUTE/ci.yml?branch=main&style=flat-square" alt="CI"/>
@@ -61,23 +61,25 @@ byte-equal roundtrip on every input.
 
 ### Results (1,500-file Python holdout, The Stack)
 
+Benchmarked on the v1.0.2 release (full holdout, p50 across all 1,500 files).
+
 | Tokenizer | mean tokens | bytes/tok | vs CUTE | encode p50 | decode p50 | roundtrip |
 |---|---:|---:|---:|---:|---:|:---:|
-| **CUTE** | **1,767** | **4.42** | — | 1,526 µs | **146 µs** | **1500 / 1500** |
-| OpenAI cl100k_base | 1,874 | 4.17 | +6.0% | **552 µs** | **56 µs** | 1500 / 1500 |
-| OpenAI o200k_base | 1,886 | 4.14 | +6.7% | 746 µs | 63 µs | 1500 / 1500 |
-| LLaMA-3 (SentencePiece BPE) | 1,872 | 4.17 | +5.9% | 1,427 µs | 326 µs | 686 / 1500 |
-| StarCoder2 | 2,210 | 3.53 | +25.1% | 1,461 µs | 258 µs | 685 / 1500 |
-| XLM-RoBERTa (SentencePiece Unigram) | 2,438 | 3.20 | +38.0% | 1,988 µs | 262 µs | 0 / 1500 |
-| CodeLlama | 2,573 | 3.03 | +45.6% | 5,120 µs | 2,417 µs | 1493 / 1500 |
-| T5 (SentencePiece Unigram) | 2,706 | 2.89 | +53.2% | 1,803 µs | 273 µs | 0 / 1500 |
-| GPT-2 | 3,581 | 2.18 | +102.7% | 2,043 µs | 396 µs | 1500 / 1500 |
+| **CUTE** | **1,767** | **4.42** | — | **1,822 µs** | **263 µs** | **1500 / 1500** |
+| OpenAI cl100k_base | 1,874 | 4.17 | +6.0% | **1,338 µs** | **120 µs** | 1500 / 1500 |
+| OpenAI o200k_base | 1,886 | 4.14 | +6.7% | 1,760 µs | 126 µs | 1500 / 1500 |
+| LLaMA-3 (SentencePiece BPE) | 1,872 | 4.17 | +5.9% | 3,753 µs | 792 µs | 686 / 1500 |
+| StarCoder2 | 2,210 | 3.53 | +25.1% | 4,316 µs | 775 µs | 685 / 1500 |
+| XLM-RoBERTa (SentencePiece Unigram) | 2,438 | 3.20 | +38.0% | 3,272 µs | 440 µs | 0 / 1500 |
+| CodeLlama | 2,573 | 3.03 | +45.6% | 3,162 µs | 1,885 µs | 1493 / 1500 |
+| T5 (SentencePiece Unigram) | 2,706 | 2.89 | +53.2% | 3,121 µs | 479 µs | 0 / 1500 |
+| GPT-2 | 3,581 | 2.18 | +102.7% | 4,467 µs | 911 µs | 1500 / 1500 |
 
 Lower mean tokens is better. `vs CUTE` is the extra cost the baseline
-pays per file; LLM API spend is linear in this number. Latency
-measured on a 1.7 KB Python sample (single-file p50). Roundtrip is
-the count of files that re-encode to byte-identical source after
-decode.
+pays per file; LLM API spend is linear in this number. Latency is the
+median across all 1,500 files (the Stack-Python holdout). Roundtrip
+is the count of files that re-encode to byte-identical source after
+decode. Full report at [`reports/v102.md`](reports/v102.md).
 
 ### What CUTE wins and where it loses
 
@@ -89,18 +91,18 @@ decode.
   this comparison that re-encodes 1,500 / 1,500 files byte-identically.
   LLaMA-3, StarCoder2, XLM-RoBERTa, T5, and CodeLlama each drop or
   corrupt at least some files.
-- **Decode latency: 3rd of 9.** 146 µs p50 — behind only OpenAI's
-  cl100k (56 µs) and o200k (63 µs), faster than every open-source
-  baseline.
-- **Encode latency: *does not* beat tiktoken.** End-to-end p50 is
-  1,526 µs, vs cl100k's 552 µs — roughly 2.8× slower. The `cute-bpe`
-  core encoder is competitive (~259 µs), but the PUA pre-substitution
-  pass + Python FFI boundary close the gap by ~1,250 µs. CUTE is
-  faster than CodeLlama, GPT-2, T5, and XLM-RoBERTa, and within ~7%
-  of LLaMA-3 and StarCoder2 — but tiktoken's encode remains the
-  speed leader. If your bottleneck is encoder throughput on
-  short prompts, cl100k is the better choice; if your bottleneck is
-  context-window budget or roundtrip safety on code, CUTE wins.
+- **Decode latency: 3rd of 9.** 263 µs p50 — behind only OpenAI's
+  cl100k (120 µs) and o200k (126 µs), faster than every open-source
+  baseline (next-closest is XLM-RoBERTa at 440 µs).
+- **Encode latency: 3rd of 9.** 1,822 µs p50 — behind cl100k
+  (1,338 µs) and o200k (1,760 µs); faster than every open-source
+  baseline including LLaMA-3, StarCoder2, GPT-2, CodeLlama, T5, and
+  XLM-RoBERTa. v1.0.2 closes most of the prior gap to tiktoken: the
+  cute-bpe Rust hot path runs ~6× faster than v1.0.1 on a 1.7 KB
+  sample (1,526 µs → 254 µs), and ~4.7× faster on decode (146 µs
+  → 31 µs). The remaining gap to cl100k on the broader 1,500-file
+  median is the PUA pre-substitution pass on large files plus
+  Python FFI cost.
 - **Determinism.** Byte-identical `tokenizer.json` within a fixed
   `(OS, python, tokenizers, _accel)` host triple. Cross-platform
   byte-identity of trained artifacts is explicitly *not* part of
@@ -336,7 +338,7 @@ If CUTE is useful for your work, please cite:
   title   = {CUTE: Compact Unicode Token Encoding via Semantic-Anchored Byte-level BPE},
   year    = {2026},
   url     = {https://github.com/HusseinEid101/CUTE},
-  version = {1.0.1}
+  version = {1.0.2}
 }
 ```
 

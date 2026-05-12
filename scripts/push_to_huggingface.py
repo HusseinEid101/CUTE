@@ -67,29 +67,29 @@ byte-identical source.
 `vs CUTE` is the extra cost the baseline pays per file. LLM API spend
 is linear in this number.
 
-## Latency (p50, 1.7 KB Python sample)
+## Latency (p50 across the full 1,500-file Stack-Python holdout)
 
 | Tokenizer                            | encode p50 | decode p50 |
 |--------------------------------------|-----------:|-----------:|
-| OpenAI cl100k_base                   |     552 µs |      56 µs |
-| OpenAI o200k_base                    |     746 µs |      63 µs |
-| LLaMA-3 (SentencePiece BPE)          |   1,427 µs |     326 µs |
-| StarCoder2                           |   1,461 µs |     258 µs |
-| **CUTE**                             | **1,526 µs** | **146 µs** |
-| T5 (SentencePiece Unigram)           |   1,803 µs |     273 µs |
-| XLM-RoBERTa (SentencePiece Unigram)  |   1,988 µs |     262 µs |
-| GPT-2                                |   2,043 µs |     396 µs |
-| CodeLlama                            |   5,120 µs |   2,417 µs |
+| OpenAI cl100k_base                   |   1,338 µs |     120 µs |
+| OpenAI o200k_base                    |   1,760 µs |     126 µs |
+| **CUTE**                             | **1,822 µs** | **263 µs** |
+| T5 (SentencePiece Unigram)           |   3,121 µs |     479 µs |
+| CodeLlama                            |   3,162 µs |   1,885 µs |
+| XLM-RoBERTa (SentencePiece Unigram)  |   3,272 µs |     440 µs |
+| LLaMA-3 (SentencePiece BPE)          |   3,753 µs |     792 µs |
+| StarCoder2                           |   4,316 µs |     775 µs |
+| GPT-2                                |   4,467 µs |     911 µs |
 
-Decode is **third-fastest** in the field (behind only OpenAI's cl100k
-and o200k). Encode is competitive with open-source code tokenizers
-(within ~7 % of LLaMA-3 / StarCoder2) but **does not beat tiktoken's
-`cl100k_base`** — end-to-end encode is ~2.8 × slower. The `cute-bpe`
-core encoder runs in ~259 µs; the rest is the PUA pre-substitution
-Aho-Corasick pass plus the Python FFI boundary. If your bottleneck is
-encoder throughput on short prompts, `cl100k_base` is the better
-choice; if it's context-window budget or roundtrip safety on code,
-CUTE wins.
+CUTE is **third-fastest encode** and **third-fastest decode** in the
+field, behind only OpenAI's `cl100k_base` and `o200k_base`. v1.0.2's
+cute-bpe Rust hot path runs ~6× faster than v1.0.1 on a short Python
+sample (1,526 µs → 254 µs end-to-end; ~5× faster on the cargo bench
+of the core encoder). On the full 1,500-file holdout median, CUTE
+beats every open-source code tokenizer (LLaMA-3, StarCoder2,
+CodeLlama, GPT-2, T5, XLM-RoBERTa) on both encode and decode latency,
+while preserving the **only** byte-perfect 1500 / 1500 roundtrip in
+the comparison.
 
 ## How it works
 
@@ -177,7 +177,7 @@ the byte-level BPE encoder.
   title   = {CUTE: Compact Unicode Token Encoding via Semantic-Anchored Byte-level BPE},
   year    = {2026},
   url     = {https://github.com/HusseinEid101/CUTE},
-  version = {1.0.1}
+  version = {1.0.2}
 }
 ```
 
